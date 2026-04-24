@@ -84,4 +84,4 @@ if (-not (Test-Path ".env")) {
 Write-Host "`n=== Installation terminee ! ===" -ForegroundColor Cyan
 Write-Host "Lance l'outil avec :" -ForegroundColor White
 Write-Host "  cd $DIR" -ForegroundColor Yellow
-Write-Host "  venv\Scripts\python main.py download <URL_PLAYLIST>" -ForegroundColor Yellow
+Write-Host "  venv\Scripts\python main.py '<URL_PLAYLIST>'" -ForegroundColor Yellow
