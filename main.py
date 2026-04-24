@@ -1,8 +1,37 @@
 from __future__ import annotations
 
 import concurrent.futures
+import os
 import sys
+import tempfile
 from pathlib import Path
+
+def _inject_windows_certs():
+    """Export Windows root CA certs to a temp PEM and set REQUESTS_CA_BUNDLE."""
+    if sys.platform != "win32":
+        return
+    if os.environ.get("REQUESTS_CA_BUNDLE"):
+        return
+    try:
+        import subprocess, base64
+        result = subprocess.run(
+            ["powershell", "-NoProfile", "-Command",
+             "Get-ChildItem -Path Cert:\\LocalMachine\\Root | ForEach-Object { "
+             "$b = [Convert]::ToBase64String($_.Export('Cert'), 'InsertLineBreaks');"
+             "Write-Output '-----BEGIN CERTIFICATE-----';"
+             "Write-Output $b;"
+             "Write-Output '-----END CERTIFICATE-----' }"],
+            capture_output=True, text=True, timeout=10
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            pem = tempfile.NamedTemporaryFile(delete=False, suffix=".pem", mode="w")
+            pem.write(result.stdout)
+            pem.close()
+            os.environ["REQUESTS_CA_BUNDLE"] = pem.name
+    except Exception:
+        pass
+
+_inject_windows_certs()
 from typing import Optional
 
 import typer

@@ -5,3 +5,4 @@ __pycache__/
 .venv/
 venv/
 *.state.json
+.spotify_cache

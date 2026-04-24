@@ -1,21 +1,31 @@
 import os
 import re
 import spotipy
-from spotipy.oauth2 import SpotifyClientCredentials
+from spotipy.oauth2 import SpotifyOAuth
 from dotenv import load_dotenv
 
 load_dotenv()
+
+_SCOPES = "playlist-read-private playlist-read-collaborative"
 
 
 def _build_client() -> spotipy.Spotify:
     client_id = os.getenv("SPOTIFY_CLIENT_ID")
     client_secret = os.getenv("SPOTIFY_CLIENT_SECRET")
+    redirect_uri = os.getenv("SPOTIFY_REDIRECT_URI", "http://127.0.0.1:8888/callback")
     if not client_id or not client_secret:
         raise RuntimeError(
             "Missing Spotify credentials. Copy .env.example to .env and fill in "
             "SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET from developer.spotify.com"
         )
-    auth = SpotifyClientCredentials(client_id=client_id, client_secret=client_secret)
+    auth = SpotifyOAuth(
+        client_id=client_id,
+        client_secret=client_secret,
+        redirect_uri=redirect_uri,
+        scope=_SCOPES,
+        open_browser=True,
+        cache_path=".spotify_cache",
+    )
     return spotipy.Spotify(auth_manager=auth)
 
 
@@ -34,8 +44,9 @@ def extract_playlist_id(url_or_id: str) -> str:
 def get_playlist_info(url_or_id: str) -> dict:
     sp = _build_client()
     playlist_id = extract_playlist_id(url_or_id)
-    data = sp.playlist(playlist_id, fields="id,name,tracks.total")
-    return {"id": data["id"], "name": data["name"], "total": data["tracks"]["total"]}
+    data = sp.playlist(playlist_id, fields="id,name")
+    page = sp.playlist_items(playlist_id, limit=1, fields="total")
+    return {"id": data["id"], "name": data["name"], "total": page["total"]}
 
 
 def get_playlist_tracks(url_or_id: str) -> list[dict]:
@@ -47,15 +58,13 @@ def get_playlist_tracks(url_or_id: str) -> list[dict]:
     limit = 100
 
     while True:
-        page = sp.playlist_tracks(
+        page = sp.playlist_items(
             playlist_id,
             offset=offset,
             limit=limit,
-            fields="items(track(id,name,duration_ms,track_number,disc_number,"
-                   "artists(name),album(name,release_date,images),external_ids(isrc))),next",
         )
         for item in page["items"]:
-            track = item.get("track")
+            track = item.get("item") or item.get("track")
             if not track or not track.get("id"):
                 continue  # skip local/unavailable tracks
             artists = [a["name"] for a in track.get("artists", [])]
