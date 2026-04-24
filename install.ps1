@@ -41,7 +41,8 @@ Write-Host "[OK] Venv pret" -ForegroundColor Green
 
 # --- Dependances pip ---
 Write-Host "[INFO] Installation des dependances pip..." -ForegroundColor Yellow
-& "venv\Scripts\pip.exe" install -r requirements.txt --quiet
+& "venv\Scripts\pip.exe" install -r requirements.txt --quiet `
+    --trusted-host pypi.org --trusted-host files.pythonhosted.org
 Write-Host "[OK] Dependances installees" -ForegroundColor Green
 
 # --- ffmpeg ---
@@ -53,15 +54,14 @@ if (Get-Command ffmpeg -ErrorAction SilentlyContinue) {
 }
 
 if (-not $ffmpegOk) {
-    Write-Host "[INFO] ffmpeg non trouve, installation via pip (ffmpeg-python + binaire)..." -ForegroundColor Yellow
-    & "venv\Scripts\pip.exe" install ffmpeg-downloader --quiet
-    & "venv\Scripts\ffmpeg-downloader" install --quiet 2>$null
-    if (-not $?) {
-        Write-Host "[WARN] Impossible d'installer ffmpeg automatiquement." -ForegroundColor Yellow
+    if (Get-Command winget -ErrorAction SilentlyContinue) {
+        Write-Host "[INFO] Installation de ffmpeg via winget..." -ForegroundColor Yellow
+        winget install --id Gyan.FFmpeg --silent --accept-source-agreements --accept-package-agreements | Out-Null
+        Write-Host "[OK] ffmpeg installe (redemarrez votre terminal pour l'activer)" -ForegroundColor Green
+    } else {
+        Write-Host "[WARN] ffmpeg introuvable et winget non disponible." -ForegroundColor Yellow
         Write-Host "       Telecharge-le manuellement : https://ffmpeg.org/download.html" -ForegroundColor Yellow
         Write-Host "       et ajoute-le au PATH." -ForegroundColor Yellow
-    } else {
-        Write-Host "[OK] ffmpeg installe" -ForegroundColor Green
     }
 } else {
     Write-Host "[OK] ffmpeg present" -ForegroundColor Green
