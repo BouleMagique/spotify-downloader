@@ -27,12 +27,21 @@ from dotenv import load_dotenv, set_key
 
 load_dotenv(BASE_DIR / ".env", override=True)
 
-from spotify_client import get_playlist_info, get_playlist_tracks
+from spotify_client import get_playlist_info as sp_info
+from spotify_client import get_playlist_tracks as sp_tracks
+import deezer_client
 from matcher import find_youtube_url
 from downloader import download_track, build_output_path
 from utils import load_state, save_state
+import yt_dlp
 
 ENV_PATH = BASE_DIR / ".env"
+SOURCES = ["Spotify", "YouTube", "Deezer"]
+URL_LABELS = {
+    "Spotify": "Playlist URL Spotify :",
+    "YouTube": "Playlist URL YouTube :",
+    "Deezer": "Playlist URL Deezer :",
+}
 
 
 def _ensure_env() -> None:
@@ -45,13 +54,41 @@ def _ensure_env() -> None:
         ENV_PATH.write_text(content, encoding="utf-8")
 
 
+def _get_youtube_playlist(url: str) -> tuple[str, str, list[dict]]:
+    """Fetch a YouTube playlist's track list via yt-dlp without downloading."""
+    opts = {"quiet": True, "no_warnings": True, "extract_flat": True, "skip_download": True}
+    with yt_dlp.YoutubeDL(opts) as ydl:
+        info = ydl.extract_info(url, download=False)
+    pid = f"yt_{info.get('id', 'playlist')}"
+    name = info.get("title", "YouTube Playlist")
+    tracks = []
+    for entry in (info.get("entries") or []):
+        if not entry or not entry.get("id"):
+            continue
+        tracks.append({
+            "spotify_id": f"yt_{entry['id']}",
+            "title": entry.get("title", ""),
+            "artists": [entry.get("uploader") or entry.get("channel") or "YouTube"],
+            "album": name,
+            "duration_ms": int((entry.get("duration") or 0) * 1000),
+            "track_number": 0,
+            "disc_number": 1,
+            "year": "",
+            "isrc": "",
+            "cover_url": entry.get("thumbnail"),
+            "_direct_url": f"https://www.youtube.com/watch?v={entry['id']}",
+        })
+    return pid, name, tracks
+
+
 def _process_track(args: tuple) -> tuple[str, str, str]:
     track, base_dir, skip, flat, playlist_name = args
     sid = track["spotify_id"]
     out = build_output_path(base_dir, track, flat=flat, playlist_name=playlist_name)
     if skip and out.exists():
         return sid, "skipped", str(out)
-    url = find_youtube_url(track)
+    # YouTube-sourced tracks already have a direct URL — skip the matching step
+    url = track.get("_direct_url") or find_youtube_url(track)
     if not url:
         return sid, "failed", "Aucune correspondance YouTube"
     try:
@@ -70,79 +107,110 @@ class App(tk.Tk):
         self.title("Spotify Downloader")
         self.resizable(False, False)
         self.configure(padx=16, pady=12)
-        self.geometry("600x700")
+        self.geometry("620x740")
 
         self._cancel = False
         self.q: queue.Queue = queue.Queue()
 
-        self._build_credentials()
+        self._build_source()
+        self._build_credentials()  # created but not yet packed
         self._build_options()
         self._build_controls()
         self._build_progress()
         self._build_log()
 
         self.protocol("WM_DELETE_WINDOW", self._on_close)
-        self._refresh_cred_status()
+        # Pack credentials conditionally and set URL label
+        self._on_source_change()
         self._poll_queue()
 
     # ── Builders ─────────────────────────────────────────────────────────────
 
+    def _build_source(self):
+        self._source_frame = ttk.LabelFrame(self, text="Source", padding=(10, 6))
+        self._source_frame.pack(fill="x", pady=(0, 8))
+        self.source_var = tk.StringVar(value="Spotify")
+        for s in SOURCES:
+            ttk.Radiobutton(
+                self._source_frame, text=s, variable=self.source_var, value=s,
+                command=self._on_source_change,
+            ).pack(side="left", padx=(0, 20))
+
     def _build_credentials(self):
-        f = ttk.LabelFrame(self, text="Configuration Spotify", padding=(10, 6))
-        f.pack(fill="x", pady=(0, 8))
-        f.columnconfigure(1, weight=1)
+        # Not packed here — _on_source_change manages visibility
+        self.cred_frame = ttk.LabelFrame(self, text="Configuration Spotify", padding=(10, 6))
+        self.cred_frame.columnconfigure(1, weight=1)
 
-        ttk.Label(f, text="Client ID :").grid(row=0, column=0, sticky="w", padx=(0, 8))
+        ttk.Label(self.cred_frame, text="Client ID :").grid(row=0, column=0, sticky="w", padx=(0, 8))
         self.id_var = tk.StringVar(value=os.getenv("SPOTIFY_CLIENT_ID", ""))
-        ttk.Entry(f, textvariable=self.id_var).grid(row=0, column=1, sticky="ew")
+        ttk.Entry(self.cred_frame, textvariable=self.id_var).grid(row=0, column=1, sticky="ew")
 
-        ttk.Label(f, text="Client Secret :").grid(row=1, column=0, sticky="w", padx=(0, 8), pady=(5, 0))
+        ttk.Label(self.cred_frame, text="Client Secret :").grid(
+            row=1, column=0, sticky="w", padx=(0, 8), pady=(5, 0)
+        )
         self.secret_var = tk.StringVar(value=os.getenv("SPOTIFY_CLIENT_SECRET", ""))
-        ttk.Entry(f, textvariable=self.secret_var, show="•").grid(row=1, column=1, sticky="ew", pady=(5, 0))
+        ttk.Entry(self.cred_frame, textvariable=self.secret_var, show="•").grid(
+            row=1, column=1, sticky="ew", pady=(5, 0)
+        )
 
-        btn_row = ttk.Frame(f)
+        btn_row = ttk.Frame(self.cred_frame)
         btn_row.grid(row=2, column=0, columnspan=2, sticky="e", pady=(8, 0))
         self.cred_lbl = ttk.Label(btn_row, text="")
         self.cred_lbl.pack(side="left", padx=(0, 10))
         ttk.Button(btn_row, text="Enregistrer", command=self._save_credentials).pack(side="left")
 
     def _build_options(self):
-        f = ttk.LabelFrame(self, text="Téléchargement", padding=(10, 6))
-        f.pack(fill="x", pady=(0, 8))
-        f.columnconfigure(1, weight=1)
+        self._options_frame = ttk.LabelFrame(self, text="Téléchargement", padding=(10, 6))
+        self._options_frame.pack(fill="x", pady=(0, 8))
+        self._options_frame.columnconfigure(1, weight=1)
 
-        ttk.Label(f, text="Playlist URL :").grid(row=0, column=0, sticky="w", padx=(0, 8))
+        self.url_label_var = tk.StringVar()
+        ttk.Label(self._options_frame, textvariable=self.url_label_var).grid(
+            row=0, column=0, sticky="w", padx=(0, 8)
+        )
         self.url_var = tk.StringVar()
-        ttk.Entry(f, textvariable=self.url_var).grid(row=0, column=1, sticky="ew")
+        ttk.Entry(self._options_frame, textvariable=self.url_var).grid(row=0, column=1, sticky="ew")
 
-        ttk.Label(f, text="Dossier de sortie :").grid(row=1, column=0, sticky="w", padx=(0, 8), pady=(6, 0))
-        out_row = ttk.Frame(f)
+        ttk.Label(self._options_frame, text="Dossier de sortie :").grid(
+            row=1, column=0, sticky="w", padx=(0, 8), pady=(6, 0)
+        )
+        out_row = ttk.Frame(self._options_frame)
         out_row.grid(row=1, column=1, sticky="ew", pady=(6, 0))
         out_row.columnconfigure(0, weight=1)
         self.out_var = tk.StringVar(value=str(Path.home() / "Music" / "spotify-dl"))
         ttk.Entry(out_row, textvariable=self.out_var).grid(row=0, column=0, sticky="ew")
-        ttk.Button(out_row, text="…", width=3, command=self._browse_output).grid(row=0, column=1, padx=(4, 0))
+        ttk.Button(out_row, text="…", width=3, command=self._browse_output).grid(
+            row=0, column=1, padx=(4, 0)
+        )
 
-        ttk.Label(f, text="Structure :").grid(row=2, column=0, sticky="w", padx=(0, 8), pady=(6, 0))
-        mode_row = ttk.Frame(f)
+        ttk.Label(self._options_frame, text="Structure :").grid(
+            row=2, column=0, sticky="w", padx=(0, 8), pady=(6, 0)
+        )
+        mode_row = ttk.Frame(self._options_frame)
         mode_row.grid(row=2, column=1, sticky="w", pady=(6, 0))
         self.mode_var = tk.StringVar(value="artist")
         ttk.Radiobutton(mode_row, text="Artiste / Album", variable=self.mode_var, value="artist").pack(side="left")
-        ttk.Radiobutton(mode_row, text="Flat  (playlist / titre)", variable=self.mode_var, value="flat").pack(
-            side="left", padx=(16, 0)
-        )
+        ttk.Radiobutton(
+            mode_row, text="Flat  (playlist / titre)", variable=self.mode_var, value="flat"
+        ).pack(side="left", padx=(16, 0))
 
-        ttk.Label(f, text="Parallélisme :").grid(row=3, column=0, sticky="w", padx=(0, 8), pady=(6, 0))
-        w_row = ttk.Frame(f)
+        ttk.Label(self._options_frame, text="Parallélisme :").grid(
+            row=3, column=0, sticky="w", padx=(0, 8), pady=(6, 0)
+        )
+        w_row = ttk.Frame(self._options_frame)
         w_row.grid(row=3, column=1, sticky="w", pady=(6, 0))
         self.workers_var = tk.IntVar(value=3)
-        ttk.Spinbox(w_row, from_=1, to=5, textvariable=self.workers_var, width=4, state="readonly").pack(side="left")
+        ttk.Spinbox(w_row, from_=1, to=5, textvariable=self.workers_var, width=4, state="readonly").pack(
+            side="left"
+        )
         ttk.Label(w_row, text="workers  (max 5)", foreground="gray").pack(side="left", padx=(6, 0))
 
         self.skip_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(f, text="Ignorer les pistes déjà téléchargées", variable=self.skip_var).grid(
-            row=4, column=0, columnspan=2, sticky="w", pady=(6, 0)
-        )
+        ttk.Checkbutton(
+            self._options_frame,
+            text="Ignorer les pistes déjà téléchargées",
+            variable=self.skip_var,
+        ).grid(row=4, column=0, columnspan=2, sticky="w", pady=(6, 0))
 
     def _build_controls(self):
         f = ttk.Frame(self)
@@ -164,6 +232,18 @@ class App(tk.Tk):
         )
         self.log.pack(fill="both", expand=True)
 
+    # ── Source visibility ────────────────────────────────────────────────────
+
+    def _on_source_change(self):
+        src = self.source_var.get()
+        self.url_label_var.set(URL_LABELS[src])
+        if src == "Spotify":
+            # Insert between source_frame and options_frame
+            self.cred_frame.pack(fill="x", pady=(0, 8), after=self._source_frame)
+            self._refresh_cred_status()
+        else:
+            self.cred_frame.pack_forget()
+
     # ── Credentials ──────────────────────────────────────────────────────────
 
     def _refresh_cred_status(self):
@@ -172,7 +252,9 @@ class App(tk.Tk):
         if ok:
             self.cred_lbl.config(text="✓ Configuré", foreground="green")
         else:
-            self.cred_lbl.config(text="⚠ Credentials manquants — remplis les champs ci-dessus", foreground="orange")
+            self.cred_lbl.config(
+                text="⚠ Credentials manquants — remplis les champs ci-dessus", foreground="orange"
+            )
 
     def _save_credentials(self):
         cid = self.id_var.get().strip()
@@ -198,9 +280,11 @@ class App(tk.Tk):
 
     def _start_download(self):
         if not self.url_var.get().strip():
-            messagebox.showwarning("URL manquante", "Colle l'URL de ta playlist Spotify.")
+            messagebox.showwarning("URL manquante", "Colle l'URL de ta playlist.")
             return
-        if not os.getenv("SPOTIFY_CLIENT_ID") or not os.getenv("SPOTIFY_CLIENT_SECRET"):
+        if self.source_var.get() == "Spotify" and (
+            not os.getenv("SPOTIFY_CLIENT_ID") or not os.getenv("SPOTIFY_CLIENT_SECRET")
+        ):
             messagebox.showwarning("Credentials manquants", "Configure et enregistre tes credentials Spotify.")
             return
         self._cancel = False
@@ -219,17 +303,28 @@ class App(tk.Tk):
 
     def _worker(self):
         try:
-            self.q.put(("status", "Récupération des métadonnées Spotify..."))
+            src = self.source_var.get()
             url = self.url_var.get().strip()
-            info = get_playlist_info(url)
-            tracks = get_playlist_tracks(url)
+
+            self.q.put(("status", f"Récupération des métadonnées {src}..."))
+
+            if src == "Spotify":
+                info = sp_info(url)
+                tracks = sp_tracks(url)
+                playlist_id, playlist_name = info["id"], info["name"]
+            elif src == "Deezer":
+                info = deezer_client.get_playlist_info(url)
+                tracks = deezer_client.get_playlist_tracks(url)
+                playlist_id, playlist_name = info["id"], info["name"]
+            else:  # YouTube
+                playlist_id, playlist_name, tracks = _get_youtube_playlist(url)
 
             out_dir = Path(self.out_var.get())
             flat = self.mode_var.get() == "flat"
             skip = self.skip_var.get()
             workers = int(self.workers_var.get())
 
-            state_path = out_dir / f"{info['id']}.state.json"
+            state_path = out_dir / f"{playlist_id}.state.json"
             state = load_state(state_path)
 
             pending = [
@@ -237,12 +332,12 @@ class App(tk.Tk):
                 if not skip or state.get(t["spotify_id"], {}).get("status") != "done"
             ]
             already_done = len(tracks) - len(pending)
-            self.q.put(("init", info["name"], len(tracks), len(pending), already_done))
+            self.q.put(("init", playlist_name, len(tracks), len(pending), already_done))
 
             done = skipped = failed = 0
 
             with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
-                args_list = [(t, out_dir, skip, flat, info["name"]) for t in pending]
+                args_list = [(t, out_dir, skip, flat, playlist_name) for t in pending]
                 futures = {pool.submit(_process_track, a): a[0] for a in args_list}
 
                 for future in concurrent.futures.as_completed(futures):
