@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
-# Spotify Downloader — Installation script (Linux/macOS)
-# Usage (one-liner):
+# Spotify Downloader — Installation/Update script (Linux/macOS)
+# Usage (one-liner, fresh install):
 #   curl -sSL https://raw.githubusercontent.com/BouleMagique/spotify-downloader/master/install.sh | bash
+#
+# Usage (local update):
+#   bash install.sh
 
 set -e
 
 REPO="https://github.com/BouleMagique/spotify-downloader.git"
 DIR="spotify-downloader"
+BRANCH="master"
 
 echo ""
 echo "=== Spotify Downloader — Setup ==="
@@ -19,6 +23,11 @@ if ! command -v python3 &>/dev/null; then
     exit 1
 fi
 PYVER=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+PYOK=$(python3 -c "import sys; print(1 if sys.version_info >= (3,10) else 0)")
+if [ "$PYOK" != "1" ]; then
+    echo "[ERROR] Python 3.10+ requis (detecte : $PYVER)." >&2
+    exit 1
+fi
 echo "[OK] Python $PYVER"
 
 # --- Git ---
@@ -27,13 +36,20 @@ if ! command -v git &>/dev/null; then
     exit 1
 fi
 
-# --- Clone ou pull ---
-if [ -d "$DIR" ]; then
-    echo "[INFO] Dossier '$DIR' existant, mise a jour..."
-    cd "$DIR" && git pull
+# --- Clone ou mise a jour ---
+if [ -d "$DIR/.git" ]; then
+    echo "[INFO] Mise a jour du repo (branche $BRANCH)..."
+    cd "$DIR"
+    git fetch origin
+    git checkout "$BRANCH"
+    git pull origin "$BRANCH"
+    echo "[OK] Code mis a jour"
+elif [ -d "$DIR" ]; then
+    echo "[WARN] Dossier '$DIR' present mais pas un repo git. Supprime-le et relance." >&2
+    exit 1
 else
-    echo "[INFO] Clonage du repo..."
-    git clone "$REPO" "$DIR"
+    echo "[INFO] Clonage du repo (branche $BRANCH)..."
+    git clone --branch "$BRANCH" "$REPO" "$DIR"
     cd "$DIR"
 fi
 
@@ -45,9 +61,12 @@ fi
 echo "[OK] Venv pret"
 
 # --- Dependances pip ---
-echo "[INFO] Installation des dependances pip..."
+echo "[INFO] Installation/mise a jour des dependances pip..."
 venv/bin/pip install -r requirements.txt --quiet
 echo "[OK] Dependances installees"
+
+# --- Permissions run.sh ---
+chmod +x run.sh 2>/dev/null || true
 
 # --- ffmpeg ---
 if command -v ffmpeg &>/dev/null; then
@@ -73,10 +92,18 @@ if [ ! -f ".env" ]; then
     echo ""
     echo "[CONFIG] Renseigne tes credentials Spotify dans le fichier .env"
     echo "  -> Cree une app sur https://developer.spotify.com/dashboard"
+    echo "  -> Dans 'Redirect URIs', ajoute : http://127.0.0.1:8888/callback"
     read -rp "  SPOTIFY_CLIENT_ID     : " CLIENT_ID
     read -rp "  SPOTIFY_CLIENT_SECRET : " CLIENT_SECRET
-    sed -i "s/your_client_id_here/$CLIENT_ID/" .env
-    sed -i "s/your_client_secret_here/$CLIENT_SECRET/" .env
+    # Remplacement portable (Python deja disponible, evite les diff sed GNU/macOS)
+    python3 - <<PYEOF
+import re, pathlib
+p = pathlib.Path('.env')
+t = p.read_text()
+t = t.replace('your_client_id_here', '$CLIENT_ID')
+t = t.replace('your_client_secret_here', '$CLIENT_SECRET')
+p.write_text(t)
+PYEOF
     echo "[OK] .env configure"
 else
     echo "[OK] .env existant, rien a faire"
@@ -84,6 +111,11 @@ fi
 
 echo ""
 echo "=== Installation terminee ! ==="
-echo "Lance l'outil avec :"
+echo ""
+echo "Lancer l'outil :"
 echo "  cd $DIR"
-echo "  venv/bin/python main.py download <URL_PLAYLIST>"
+echo "  bash run.sh download <URL_PLAYLIST>"
+echo "  bash run.sh download <URL_PLAYLIST> --flat    # structure plate playlist/titre.mp3"
+echo ""
+echo "Mettre a jour plus tard :"
+echo "  bash run.sh update"
