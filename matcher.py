@@ -11,19 +11,16 @@ def _duration_delta(yt_duration_s: float, spotify_duration_ms: int) -> float:
 def _score(entry: dict, track: dict) -> float:
     score = 0.0
 
-    # Duration match (most important signal)
     yt_dur = entry.get("duration") or 0
     delta = _duration_delta(yt_dur, track["duration_ms"])
     if delta > 15:
-        return -999  # discard
-    score += max(0, 10 - delta)  # up to +10 for exact match
+        return -999
+    score += max(0, 10 - delta)
 
-    # Official "Artist - Topic" channel bonus
     channel = entry.get("channel") or entry.get("uploader") or ""
     if channel.endswith("- Topic"):
         score += 5
 
-    # Title noise penalty — only penalise if original track doesn't have those words
     original_has_noise = bool(_NOISE_WORDS.search(track["title"]))
     if not original_has_noise:
         yt_title = entry.get("title") or ""
@@ -46,7 +43,6 @@ def find_youtube_url(track: dict) -> str | None:
 
     candidates = []
 
-    # Try YouTube Music first (better match quality)
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         try:
             results = ydl.extract_info(f"ytmsearch5:{query}", download=False)
@@ -57,7 +53,6 @@ def find_youtube_url(track: dict) -> str | None:
         except Exception:
             pass
 
-    # Fallback: regular YouTube
     if not candidates:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             try:
@@ -72,12 +67,13 @@ def find_youtube_url(track: dict) -> str | None:
     if not candidates:
         return None
 
-    best = max(candidates, key=lambda e: _score(e, track))
-    if _score(best, track) <= -999:
+    scored = [(e, _score(e, track)) for e in candidates]
+    best_entry, best_score = max(scored, key=lambda x: x[1])
+    if best_score <= -999:
         return None
 
-    url = best.get("url") or best.get("webpage_url")
-    vid_id = best.get("id")
+    url = best_entry.get("url") or best_entry.get("webpage_url")
+    vid_id = best_entry.get("id")
     if vid_id and not url:
         url = f"https://www.youtube.com/watch?v={vid_id}"
     return url

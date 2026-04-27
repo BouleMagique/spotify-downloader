@@ -7,6 +7,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 _SCOPES = "playlist-read-private playlist-read-collaborative"
+_client: spotipy.Spotify | None = None
+
+
+def _get_client() -> spotipy.Spotify:
+    global _client
+    if _client is None:
+        _client = _build_client()
+    return _client
 
 
 def _build_client() -> spotipy.Spotify:
@@ -30,19 +38,16 @@ def _build_client() -> spotipy.Spotify:
 
 
 def extract_playlist_id(url_or_id: str) -> str:
-    # Handle spotify:playlist:xxx URI
     if url_or_id.startswith("spotify:playlist:"):
         return url_or_id.split(":")[-1]
-    # Handle https://open.spotify.com/playlist/xxxxx?...
     match = re.search(r"playlist/([A-Za-z0-9]+)", url_or_id)
     if match:
         return match.group(1)
-    # Assume raw ID
     return url_or_id.strip()
 
 
 def get_playlist_info(url_or_id: str) -> dict:
-    sp = _build_client()
+    sp = _get_client()
     playlist_id = extract_playlist_id(url_or_id)
     data = sp.playlist(playlist_id, fields="id,name")
     page = sp.playlist_items(playlist_id, limit=1, fields="total")
@@ -50,7 +55,7 @@ def get_playlist_info(url_or_id: str) -> dict:
 
 
 def get_playlist_tracks(url_or_id: str) -> list[dict]:
-    sp = _build_client()
+    sp = _get_client()
     playlist_id = extract_playlist_id(url_or_id)
 
     tracks = []
@@ -66,7 +71,7 @@ def get_playlist_tracks(url_or_id: str) -> list[dict]:
         for item in page["items"]:
             track = item.get("item") or item.get("track")
             if not track or not track.get("id"):
-                continue  # skip local/unavailable tracks
+                continue
             artists = [a["name"] for a in track.get("artists", [])]
             album = track.get("album", {})
             images = album.get("images", [])

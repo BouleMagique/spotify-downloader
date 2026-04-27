@@ -1,38 +1,13 @@
 from __future__ import annotations
 
 import concurrent.futures
-import os
-import sys
-import tempfile
 from pathlib import Path
 
-def _inject_windows_certs():
-    """Export Windows root CA certs to a temp PEM and set REQUESTS_CA_BUNDLE."""
-    if sys.platform != "win32":
-        return
-    if os.environ.get("REQUESTS_CA_BUNDLE"):
-        return
-    try:
-        import subprocess, base64
-        result = subprocess.run(
-            ["powershell", "-NoProfile", "-Command",
-             "Get-ChildItem -Path Cert:\\LocalMachine\\Root | ForEach-Object { "
-             "$b = [Convert]::ToBase64String($_.Export('Cert'), 'InsertLineBreaks');"
-             "Write-Output '-----BEGIN CERTIFICATE-----';"
-             "Write-Output $b;"
-             "Write-Output '-----END CERTIFICATE-----' }"],
-            capture_output=True, text=True, timeout=10
-        )
-        if result.returncode == 0 and result.stdout.strip():
-            pem = tempfile.NamedTemporaryFile(delete=False, suffix=".pem", mode="w")
-            pem.write(result.stdout)
-            pem.close()
-            os.environ["REQUESTS_CA_BUNDLE"] = pem.name
-    except Exception:
-        pass
-
-_inject_windows_certs()
-from typing import Optional
+try:
+    import truststore
+    truststore.inject_into_ssl()
+except Exception:
+    pass
 
 import typer
 from rich.console import Console
@@ -50,9 +25,9 @@ console = Console()
 
 def _process_track(args: tuple) -> tuple[str, str, str]:
     """Returns (spotify_id, status, message)"""
-    track, base_dir, skip_existing = args
+    track, base_dir, skip_existing, flat, playlist_name = args
     spotify_id = track["spotify_id"]
-    out_path = build_output_path(base_dir, track)
+    out_path = build_output_path(base_dir, track, flat=flat, playlist_name=playlist_name)
 
     if skip_existing and out_path.exists():
         return spotify_id, "skipped", str(out_path)
@@ -75,11 +50,12 @@ def download(
     workers: int = typer.Option(3, "--workers", "-w", help="Parallel downloads (max 5)"),
     skip_existing: bool = typer.Option(True, "--skip-existing/--no-skip", help="Skip already downloaded tracks"),
     dry_run: bool = typer.Option(False, "--dry-run", help="List tracks without downloading"),
+    flat: bool = typer.Option(False, "--flat", help="Flat structure: playlist/title.mp3 instead of artist/album/title.mp3"),
 ):
     """Download a complete Spotify playlist as MP3 320kbps."""
     workers = min(workers, 5)
 
-    console.print(f"[bold cyan]Fetching playlist metadata...[/bold cyan]")
+    console.print("[bold cyan]Fetching playlist metadata...[/bold cyan]")
     try:
         info = get_playlist_info(playlist)
     except RuntimeError as e:
@@ -105,7 +81,6 @@ def download(
     state_path = output / f"{info['id']}.state.json"
     state = load_state(state_path)
 
-    # Filter tracks already done
     pending = [t for t in tracks if state.get(t["spotify_id"], {}).get("status") != "done" or not skip_existing]
     already_done = len(tracks) - len(pending)
     if already_done:
@@ -127,7 +102,7 @@ def download(
         task = progress.add_task(f"Downloading {len(pending)} tracks...", total=len(pending))
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
-            args_list = [(t, output, skip_existing) for t in pending]
+            args_list = [(t, output, skip_existing, flat, info["name"]) for t in pending]
             futures = {pool.submit(_process_track, a): a[0] for a in args_list}
 
             for future in concurrent.futures.as_completed(futures):
