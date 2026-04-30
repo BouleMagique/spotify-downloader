@@ -1,4 +1,4 @@
-@echo off
+﻿@echo off
 setlocal
 set "DIR=%~dp0"
 
@@ -11,13 +11,13 @@ echo [INFO] Build en cours (peut prendre 1-2 minutes)...
     --onefile ^
     --windowed ^
     --name "SpotifyDownloader" ^
-    --hidden-import spotipy ^
-    --hidden-import spotipy.oauth2 ^
-    --hidden-import yt_dlp ^
+    --collect-all yt_dlp ^
+    --collect-all spotipy ^
     --hidden-import mutagen ^
     --hidden-import mutagen.id3 ^
     --hidden-import truststore ^
     --hidden-import dotenv ^
+    --hidden-import requests ^
     --hidden-import tkinter ^
     --hidden-import tkinter.ttk ^
     --hidden-import tkinter.scrolledtext ^
@@ -26,6 +26,6 @@ echo [INFO] Build en cours (peut prendre 1-2 minutes)...
 echo.
 echo [OK] Executable genere : dist\SpotifyDownloader.exe
 echo.
-echo IMPORTANT : avant de lancer l'exe, copier .env dans le meme dossier :
+echo Copie le .env dans le meme dossier que l'exe avant de lancer :
 echo   copy .env dist\.env
-echo   ffmpeg doit aussi etre installe et accessible dans le PATH.
+echo ffmpeg doit etre installe et dans le PATH.
