@@ -3,8 +3,15 @@ import requests
 
 
 def extract_playlist_id(url_or_id: str) -> str:
-    m = re.search(r"deezer\.com/(?:\w+/)?playlist/(\d+)", url_or_id)
-    return m.group(1) if m else url_or_id.strip()
+    resolved = url_or_id.strip()
+    if "link.deezer.com" in resolved:
+        try:
+            r = requests.head(resolved, allow_redirects=True, timeout=10)
+            resolved = r.url
+        except Exception:
+            pass
+    m = re.search(r"deezer\.com/(?:\w+/)?playlist/(\d+)", resolved)
+    return m.group(1) if m else resolved
 
 
 def get_playlist_info(url_or_id: str) -> dict:

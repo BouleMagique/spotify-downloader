@@ -56,6 +56,12 @@ def _ensure_env() -> None:
 
 def _get_youtube_playlist(url: str) -> tuple[str, str, list[dict]]:
     """Fetch a YouTube playlist's track list via yt-dlp without downloading."""
+    import urllib.parse
+    parsed = urllib.parse.urlparse(url)
+    params = urllib.parse.parse_qs(parsed.query)
+    if "list" in params:
+        url = f"https://www.youtube.com/playlist?list={params['list'][0]}"
+
     opts = {"quiet": True, "no_warnings": True, "extract_flat": True, "skip_download": True}
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=False)

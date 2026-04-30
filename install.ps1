@@ -41,7 +41,6 @@ if (Test-Path "$DIR\.git") {
     git pull origin $BRANCH
     Write-Host "[OK] Code mis a jour" -ForegroundColor Green
 } elseif (Test-Path $DIR) {
-    # Dossier existant sans .git — on clone dedans apres avoir renomme
     Write-Host "[WARN] Dossier '$DIR' present mais pas un repo git. Supprime-le et relance." -ForegroundColor Yellow
     exit 1
 } else {
@@ -85,27 +84,37 @@ if (-not $ffmpegOk) {
     Write-Host "[OK] ffmpeg present" -ForegroundColor Green
 }
 
-# --- .env ---
+# --- .env (Spotify, optionnel) ---
 if (-not (Test-Path ".env")) {
     Copy-Item ".env.example" ".env"
-    Write-Host "`n[CONFIG] Renseigne tes credentials Spotify dans le fichier .env" -ForegroundColor Cyan
-    Write-Host "  -> Cree une app sur https://developer.spotify.com/dashboard" -ForegroundColor White
-    Write-Host "  -> Dans 'Redirect URIs', ajoute : http://127.0.0.1:8888/callback" -ForegroundColor White
-    $id     = Read-Host "  SPOTIFY_CLIENT_ID"
-    $secret = Read-Host "  SPOTIFY_CLIENT_SECRET"
-    (Get-Content ".env") -replace "your_client_id_here", $id `
-                         -replace "your_client_secret_here", $secret | Set-Content ".env"
-    Write-Host "[OK] .env configure" -ForegroundColor Green
+    Write-Host "`n[INFO] YouTube et Deezer ne necessitent pas de credentials." -ForegroundColor Cyan
+    Write-Host "[INFO] Les credentials Spotify sont requis uniquement pour les playlists Spotify." -ForegroundColor Cyan
+    $addSpotify = Read-Host "  Configurer les credentials Spotify maintenant ? (o/N)"
+    if ($addSpotify -eq "o" -or $addSpotify -eq "O") {
+        Write-Host "  -> Cree une app sur https://developer.spotify.com/dashboard" -ForegroundColor White
+        Write-Host "  -> Dans 'Redirect URIs', ajoute : http://127.0.0.1:8888/callback" -ForegroundColor White
+        $id     = Read-Host "  SPOTIFY_CLIENT_ID"
+        $secret = Read-Host "  SPOTIFY_CLIENT_SECRET"
+        (Get-Content ".env") -replace "your_client_id_here", $id `
+                             -replace "your_client_secret_here", $secret | Set-Content ".env"
+        Write-Host "[OK] .env configure" -ForegroundColor Green
+    } else {
+        Write-Host "[OK] Credentials Spotify ignores (configurable plus tard dans la GUI ou dans .env)" -ForegroundColor Green
+    }
 } else {
     Write-Host "[OK] .env existant, rien a faire" -ForegroundColor Green
 }
 
 Write-Host "`n=== Installation terminee ! ===" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "Lancer l'outil :" -ForegroundColor White
+Write-Host "Lancer en mode GUI (Spotify / YouTube / Deezer) :" -ForegroundColor White
 Write-Host "  cd $DIR" -ForegroundColor Yellow
-Write-Host "  run.bat download <URL_PLAYLIST>" -ForegroundColor Yellow
-Write-Host "  run.bat download <URL_PLAYLIST> --flat    # structure plate playlist/titre.mp3" -ForegroundColor Yellow
+Write-Host "  venv\Scripts\python gui.py" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "Lancer en mode CLI (Spotify uniquement) :" -ForegroundColor White
+Write-Host "  cd $DIR" -ForegroundColor Yellow
+Write-Host "  run.bat <URL_PLAYLIST_SPOTIFY>" -ForegroundColor Yellow
+Write-Host "  run.bat <URL_PLAYLIST_SPOTIFY> --flat    # structure plate playlist/titre.mp3" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "Mettre a jour plus tard :" -ForegroundColor White
 Write-Host "  run.bat update" -ForegroundColor Yellow

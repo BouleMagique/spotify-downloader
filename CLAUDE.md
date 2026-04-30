@@ -54,17 +54,17 @@ venv\Scripts\activate          # Windows
 pip install -r requirements.txt
 
 # Lancement sans activer le venv (Windows)
-run.bat download <SPOTIFY_URL>
+run.bat <SPOTIFY_URL>
 
 # Lancement sans activer le venv (Linux/macOS)
-bash run.sh download <SPOTIFY_URL>
+bash run.sh <SPOTIFY_URL>
 
 # Avec python direct (venv activé)
-python main.py download <SPOTIFY_URL>
-python main.py download <SPOTIFY_URL> --output ./music --workers 4
-python main.py download <SPOTIFY_URL> --dry-run          # aperçu sans télécharger
-python main.py download <SPOTIFY_URL> --flat             # structure: playlist/titre.mp3
-python main.py download <SPOTIFY_URL> --no-skip          # re-télécharger même les existants
+python main.py <SPOTIFY_URL>
+python main.py <SPOTIFY_URL> --output ./music --workers 4
+python main.py <SPOTIFY_URL> --dry-run          # aperçu sans télécharger
+python main.py <SPOTIFY_URL> --flat             # structure: playlist/titre.mp3
+python main.py <SPOTIFY_URL> --no-skip          # re-télécharger même les existants
 ```
 
 ## Options CLI

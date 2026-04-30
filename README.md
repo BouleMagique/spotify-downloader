@@ -1,7 +1,11 @@
 # Spotify Downloader
 
-Télécharge une playlist Spotify complète en MP3 320kbps.  
+Télécharge des playlists **Spotify**, **YouTube** et **Deezer** en MP3 320kbps.  
 Recherche automatiquement les morceaux sur YouTube Music, les télécharge et les tague (titre, artiste, album, cover, année, numéro de piste).
+
+Deux modes :
+- **GUI** — interface graphique tkinter (Spotify / YouTube / Deezer)
+- **CLI** — terminal (Spotify uniquement)
 
 ---
 
@@ -10,7 +14,7 @@ Recherche automatiquement les morceaux sur YouTube Music, les télécharge et le
 - Python 3.10+
 - Git
 - ffmpeg (installé automatiquement par le script si possible)
-- Un compte [Spotify Developer](https://developer.spotify.com/dashboard) pour les credentials API
+- Un compte [Spotify Developer](https://developer.spotify.com/dashboard) **uniquement pour les playlists Spotify**
 
 ---
 
@@ -33,13 +37,11 @@ Le script fait tout :
 2. Crée un environnement virtuel Python
 3. Installe les dépendances
 4. Installe ffmpeg si absent
-5. Crée le fichier `.env` et demande tes credentials Spotify
+5. Propose de configurer les credentials Spotify (optionnel)
 
 ---
 
 ## Mise à jour
-
-Pour récupérer la dernière version du code et mettre à jour les dépendances :
 
 ```bash
 # Windows
@@ -58,10 +60,9 @@ git clone https://github.com/BouleMagique/spotify-downloader.git
 cd spotify-downloader
 python -m venv venv
 
-# Activer le venv (une seule fois par session si tu utilises python directement)
-# Windows :
+# Windows
 venv\Scripts\activate
-# Linux/macOS :
+# Linux / macOS
 source venv/bin/activate
 
 pip install -r requirements.txt
@@ -75,9 +76,66 @@ pip install -r requirements.txt
 
 ---
 
-## Configuration
+## Lancer en mode GUI
 
-Copie le fichier d'exemple et renseigne tes credentials :
+La GUI supporte les playlists Spotify, YouTube et Deezer. Aucun credential requis pour YouTube et Deezer.
+
+```bash
+# Windows (sans activer le venv)
+venv\Scripts\python gui.py
+
+# Linux / macOS
+venv/bin/python gui.py
+```
+
+Pour les playlists Spotify : renseigne et enregistre tes credentials directement dans le panneau "Configuration Spotify" de l'interface.
+
+---
+
+## Lancer en mode CLI (Spotify uniquement)
+
+```bash
+# Windows (sans activer le venv)
+run.bat <URL_PLAYLIST_SPOTIFY>
+
+# Linux / macOS
+bash run.sh <URL_PLAYLIST_SPOTIFY>
+
+# Ou avec Python directement (venv activé)
+python main.py <URL>
+```
+
+### Options
+
+| Option | Défaut | Description |
+|--------|--------|-------------|
+| `--output` / `-o` | `downloads/` | Dossier de sortie |
+| `--workers` / `-w` | `3` | Téléchargements en parallèle (max 5) |
+| `--flat` | off | Structure plate : `playlist/titre.mp3` |
+| `--dry-run` | off | Liste les morceaux sans télécharger |
+| `--skip-existing/--no-skip` | skip | Sauter les fichiers déjà présents |
+
+### Exemples
+
+```bash
+# Structure par défaut : artiste/album/titre.mp3
+run.bat <URL>
+
+# Structure plate : NomPlaylist/titre.mp3
+run.bat <URL> --flat
+
+# Dossier spécifique, 5 workers
+run.bat <URL> --output D:\Musique --workers 5
+
+# Aperçu sans télécharger
+run.bat <URL> --dry-run
+```
+
+---
+
+## Configuration Spotify
+
+Nécessaire uniquement pour les playlists Spotify. Crée un fichier `.env` :
 
 ```bash
 cp .env.example .env
@@ -103,48 +161,9 @@ SPOTIFY_REDIRECT_URI=http://127.0.0.1:8888/callback
 
 ---
 
-## Utilisation
+## Structure de sortie
 
-```bash
-# Windows (pas besoin d'activer le venv)
-run.bat download https://open.spotify.com/playlist/XXXXXXXXXXXXXXXX
-
-# Linux / macOS
-bash run.sh download https://open.spotify.com/playlist/XXXXXXXXXXXXXXXX
-
-# Ou avec python directement (venv activé)
-python main.py download <URL>
-```
-
-### Options disponibles
-
-| Option | Défaut | Description |
-|--------|--------|-------------|
-| `--output` / `-o` | `downloads/` | Dossier de sortie |
-| `--workers` / `-w` | `3` | Téléchargements en parallèle (max 5) |
-| `--flat` | off | Structure plate : `playlist/titre.mp3` |
-| `--dry-run` | off | Liste les morceaux sans télécharger |
-| `--skip-existing/--no-skip` | skip | Sauter les fichiers déjà présents |
-
-### Exemples
-
-```bash
-# Structure par défaut : artiste/album/titre.mp3
-run.bat download <URL>
-
-# Structure plate : NomPlaylist/titre.mp3 (pratique pour les playlists mixtes)
-run.bat download <URL> --flat
-
-# Télécharger dans un dossier spécifique avec 5 workers
-run.bat download <URL> --output D:\Musique --workers 5
-
-# Aperçu de la playlist sans télécharger
-run.bat download <URL> --dry-run
-```
-
-### Structure de sortie
-
-**Sans `--flat` (défaut) :**
+**Mode artiste (défaut) :**
 ```
 downloads/
 └── Daft Punk/
@@ -153,7 +172,7 @@ downloads/
         └── 02 - The Game of Love.mp3
 ```
 
-**Avec `--flat` :**
+**Mode flat :**
 ```
 downloads/
 └── Ma Playlist/
@@ -165,8 +184,9 @@ downloads/
 
 ## Fonctionnement
 
-1. Récupère les métadonnées de la playlist via l'API Spotify (titre, artistes, album, ISRC, cover, durée)
-2. Pour chaque morceau, cherche la meilleure correspondance sur YouTube Music (fallback YouTube) via un score basé sur la durée, la chaîne officielle et les mots-clés parasites (live, cover, remix…)
+1. Récupère les métadonnées de la playlist (Spotify API / Deezer API / yt-dlp selon la source)
+2. Pour chaque morceau, cherche la meilleure correspondance sur YouTube Music (fallback YouTube) via un score basé sur la durée, la chaîne officielle et les mots-clés parasites (live, cover, remix…)  
+   *Exception : les playlists YouTube utilisent directement l'URL de la vidéo, sans étape de recherche.*
 3. Télécharge l'audio et le convertit en MP3 320kbps via ffmpeg
 4. Embarque les tags ID3 (titre, artiste, album, année, numéro de piste, ISRC, cover)
 5. Sauvegarde l'état dans un fichier `.state.json` pour reprendre automatiquement en cas d'interruption
@@ -184,5 +204,5 @@ downloads/
 | `typer` | Interface CLI |
 | `rich` | Affichage terminal (progress bar, tableaux) |
 | `python-dotenv` | Chargement du `.env` |
-| `requests` | Téléchargement des covers album |
+| `requests` | Téléchargement des covers + API Deezer |
 | `truststore` | Certificats SSL système (proxy corporate) |
