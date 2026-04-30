@@ -26,27 +26,30 @@ if ($LASTEXITCODE -ne 0) {
 $pyver = python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
 Write-Host "[OK] Python $pyver" -ForegroundColor Green
 
-# --- Git ---
-if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
-    Write-Host "[ERROR] Git n'est pas installe. Installe-le depuis https://git-scm.com puis relance ce script." -ForegroundColor Red
-    exit 1
-}
-
-# --- Clone ou mise a jour ---
-if (Test-Path "$DIR\.git") {
-    Write-Host "[INFO] Mise a jour du repo (branche $BRANCH)..." -ForegroundColor Yellow
-    Set-Location $DIR
-    git fetch origin
-    git checkout $BRANCH
-    git pull origin $BRANCH
-    Write-Host "[OK] Code mis a jour" -ForegroundColor Green
-} elseif (Test-Path $DIR) {
-    Write-Host "[WARN] Dossier '$DIR' present mais pas un repo git. Supprime-le et relance." -ForegroundColor Yellow
-    exit 1
+# --- Repo : deja dans le dossier (ZIP extrait) ou a cloner ---
+if (Test-Path "main.py") {
+    Write-Host "[OK] Dossier du projet detecte, pas besoin de cloner" -ForegroundColor Green
 } else {
-    Write-Host "[INFO] Clonage du repo (branche $BRANCH)..." -ForegroundColor Yellow
-    git clone --branch $BRANCH $REPO $DIR
-    Set-Location $DIR
+    # Git requis pour cloner
+    if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+        Write-Host "[ERROR] Git n'est pas installe. Installe-le depuis https://git-scm.com puis relance ce script." -ForegroundColor Red
+        exit 1
+    }
+    if (Test-Path "$DIR\.git") {
+        Write-Host "[INFO] Mise a jour du repo (branche $BRANCH)..." -ForegroundColor Yellow
+        Set-Location $DIR
+        git fetch origin
+        git checkout $BRANCH
+        git pull origin $BRANCH
+        Write-Host "[OK] Code mis a jour" -ForegroundColor Green
+    } elseif (Test-Path $DIR) {
+        Write-Host "[WARN] Dossier '$DIR' present mais pas un repo git. Supprime-le et relance." -ForegroundColor Yellow
+        exit 1
+    } else {
+        Write-Host "[INFO] Clonage du repo (branche $BRANCH)..." -ForegroundColor Yellow
+        git clone --branch $BRANCH $REPO $DIR
+        Set-Location $DIR
+    }
 }
 
 # --- Venv ---

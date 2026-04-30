@@ -12,48 +12,50 @@ Deux modes :
 ## Prérequis
 
 - Python 3.10+
-- Git
 - ffmpeg (installé automatiquement par le script si possible)
 - Un compte [Spotify Developer](https://developer.spotify.com/dashboard) **uniquement pour les playlists Spotify**
 
 ---
 
-## Installation automatique (recommandée)
+## Installation
 
-### Windows
+### Option 1 — Via une commande (recommandée)
 
+Nécessite Git installé sur la machine.
+
+**Windows :**
 ```powershell
 powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/BouleMagique/spotify-downloader/master/install.ps1 | iex"
 ```
 
-### Linux / macOS
-
+**Linux / macOS :**
 ```bash
 curl -sSL https://raw.githubusercontent.com/BouleMagique/spotify-downloader/master/install.sh | bash
 ```
 
-Le script fait tout :
-1. Clone le repo (ou met à jour si déjà présent)
-2. Crée un environnement virtuel Python
-3. Installe les dépendances
-4. Installe ffmpeg si absent
-5. Propose de configurer les credentials Spotify (optionnel)
-
 ---
 
-## Mise à jour
+### Option 2 — Téléchargement depuis GitHub
 
+1. Va sur [github.com/BouleMagique/spotify-downloader](https://github.com/BouleMagique/spotify-downloader)
+2. Clique **Code** → **Download ZIP**
+3. Extrais l'archive
+4. Ouvre un terminal dans le dossier extrait
+5. Lance le script d'installation :
+
+**Windows :**
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install.ps1
+```
+
+**Linux / macOS :**
 ```bash
-# Windows
-run.bat update
-
-# Linux / macOS
-bash run.sh update
+bash install.sh
 ```
 
 ---
 
-## Installation manuelle
+### Option 3 — Installation manuelle (clone + pip)
 
 ```bash
 git clone https://github.com/BouleMagique/spotify-downloader.git
@@ -68,7 +70,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Installer ffmpeg
+**Installer ffmpeg :**
 
 **Windows :** `winget install --id Gyan.FFmpeg` ou [télécharger manuellement](https://ffmpeg.org/download.html) et ajouter au PATH  
 **Ubuntu/Debian :** `sudo apt install ffmpeg`  
@@ -76,19 +78,41 @@ pip install -r requirements.txt
 
 ---
 
-## Lancer en mode GUI
+Le script d'installation fait tout :
+1. Crée un environnement virtuel Python
+2. Installe les dépendances
+3. Installe ffmpeg si absent
+4. Propose de configurer les credentials Spotify (optionnel — pas nécessaire pour YouTube/Deezer)
 
-La GUI supporte les playlists Spotify, YouTube et Deezer. Aucun credential requis pour YouTube et Deezer.
+---
 
-```bash
-# Windows (sans activer le venv)
+## Lancer la GUI
+
+Supporte les playlists **Spotify**, **YouTube** et **Deezer**. Aucun credential requis pour YouTube et Deezer.
+
+**Windows :**
+```powershell
 venv\Scripts\python gui.py
+```
 
-# Linux / macOS
+**Linux / macOS :**
+```bash
 venv/bin/python gui.py
 ```
 
 Pour les playlists Spotify : renseigne et enregistre tes credentials directement dans le panneau "Configuration Spotify" de l'interface.
+
+---
+
+## Mise à jour
+
+```bash
+# Windows
+run.bat update
+
+# Linux / macOS
+bash run.sh update
+```
 
 ---
 
@@ -135,13 +159,7 @@ run.bat <URL> --dry-run
 
 ## Configuration Spotify
 
-Nécessaire uniquement pour les playlists Spotify. Crée un fichier `.env` :
-
-```bash
-cp .env.example .env
-```
-
-Édite `.env` :
+Nécessaire uniquement pour les playlists Spotify. Crée un fichier `.env` à la racine du projet :
 
 ```env
 SPOTIFY_CLIENT_ID=<ton_client_id>

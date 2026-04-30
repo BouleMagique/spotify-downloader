@@ -30,27 +30,32 @@ if [ "$PYOK" != "1" ]; then
 fi
 echo "[OK] Python $PYVER"
 
-# --- Git ---
-if ! command -v git &>/dev/null; then
-    echo "[ERROR] Git n'est pas installe." >&2
-    exit 1
-fi
-
-# --- Clone ou mise a jour ---
-if [ -d "$DIR/.git" ]; then
-    echo "[INFO] Mise a jour du repo (branche $BRANCH)..."
-    cd "$DIR"
-    git fetch origin
-    git checkout "$BRANCH"
-    git pull origin "$BRANCH"
-    echo "[OK] Code mis a jour"
-elif [ -d "$DIR" ]; then
-    echo "[WARN] Dossier '$DIR' present mais pas un repo git. Supprime-le et relance." >&2
-    exit 1
+# --- Repo : deja dans le dossier (ZIP extrait) ou a cloner ---
+if [ -f "main.py" ]; then
+    echo "[OK] Dossier du projet detecte, pas besoin de cloner"
 else
-    echo "[INFO] Clonage du repo (branche $BRANCH)..."
-    git clone --branch "$BRANCH" "$REPO" "$DIR"
-    cd "$DIR"
+    # Git requis pour cloner
+    if ! command -v git &>/dev/null; then
+        echo "[ERROR] Git n'est pas installe." >&2
+        echo "  Ubuntu/Debian : sudo apt install git" >&2
+        echo "  macOS         : brew install git" >&2
+        exit 1
+    fi
+    if [ -d "$DIR/.git" ]; then
+        echo "[INFO] Mise a jour du repo (branche $BRANCH)..."
+        cd "$DIR"
+        git fetch origin
+        git checkout "$BRANCH"
+        git pull origin "$BRANCH"
+        echo "[OK] Code mis a jour"
+    elif [ -d "$DIR" ]; then
+        echo "[WARN] Dossier '$DIR' present mais pas un repo git. Supprime-le et relance." >&2
+        exit 1
+    else
+        echo "[INFO] Clonage du repo (branche $BRANCH)..."
+        git clone --branch "$BRANCH" "$REPO" "$DIR"
+        cd "$DIR"
+    fi
 fi
 
 # --- Venv ---
