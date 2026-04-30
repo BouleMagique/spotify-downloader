@@ -1,4 +1,4 @@
-# Spotify Downloader — Installation/Update script (Windows)
+﻿# Spotify Downloader - Installation/Update script (Windows)
 # Usage (one-liner, fresh install):
 #   powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/BouleMagique/spotify-downloader/master/install.ps1 | iex"
 #
@@ -10,7 +10,7 @@ $REPO   = "https://github.com/BouleMagique/spotify-downloader.git"
 $DIR    = "spotify-downloader"
 $BRANCH = "master"
 
-Write-Host "`n=== Spotify Downloader — Setup ===" -ForegroundColor Cyan
+Write-Host "`n=== Spotify Downloader - Setup ===" -ForegroundColor Cyan
 
 # --- Python ---
 if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
@@ -81,7 +81,7 @@ if (-not $ffmpegOk) {
     } else {
         Write-Host "[WARN] ffmpeg introuvable et winget non disponible." -ForegroundColor Yellow
         Write-Host "       Telecharge-le manuellement : https://ffmpeg.org/download.html" -ForegroundColor Yellow
-        Write-Host "       Ajoute le dossier 'bin' au PATH systeme." -ForegroundColor Yellow
+        Write-Host "       Ajoute le dossier bin au PATH systeme." -ForegroundColor Yellow
     }
 } else {
     Write-Host "[OK] ffmpeg present" -ForegroundColor Green
@@ -95,7 +95,7 @@ if (-not (Test-Path ".env")) {
     $addSpotify = Read-Host "  Configurer les credentials Spotify maintenant ? (o/N)"
     if ($addSpotify -eq "o" -or $addSpotify -eq "O") {
         Write-Host "  -> Cree une app sur https://developer.spotify.com/dashboard" -ForegroundColor White
-        Write-Host "  -> Dans 'Redirect URIs', ajoute : http://127.0.0.1:8888/callback" -ForegroundColor White
+        Write-Host "  -> Dans Redirect URIs, ajoute : http://127.0.0.1:8888/callback" -ForegroundColor White
         $id     = Read-Host "  SPOTIFY_CLIENT_ID"
         $secret = Read-Host "  SPOTIFY_CLIENT_SECRET"
         (Get-Content ".env") -replace "your_client_id_here", $id `
