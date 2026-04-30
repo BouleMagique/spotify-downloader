@@ -86,25 +86,31 @@ else
     command -v ffmpeg &>/dev/null && echo "[OK] ffmpeg installe"
 fi
 
-# --- .env ---
+# --- .env (Spotify, optionnel) ---
 if [ ! -f ".env" ]; then
     cp .env.example .env
     echo ""
-    echo "[CONFIG] Renseigne tes credentials Spotify dans le fichier .env"
-    echo "  -> Cree une app sur https://developer.spotify.com/dashboard"
-    echo "  -> Dans 'Redirect URIs', ajoute : http://127.0.0.1:8888/callback"
-    read -rp "  SPOTIFY_CLIENT_ID     : " CLIENT_ID
-    read -rp "  SPOTIFY_CLIENT_SECRET : " CLIENT_SECRET
-    # Remplacement portable (Python deja disponible, evite les diff sed GNU/macOS)
-    python3 - <<PYEOF
-import re, pathlib
+    echo "[INFO] YouTube et Deezer ne necessitent pas de credentials."
+    echo "[INFO] Les credentials Spotify sont requis uniquement pour les playlists Spotify."
+    printf "  Configurer les credentials Spotify maintenant ? (o/N) : "
+    read -r ADD_SPOTIFY
+    if [ "$ADD_SPOTIFY" = "o" ] || [ "$ADD_SPOTIFY" = "O" ]; then
+        echo "  -> Cree une app sur https://developer.spotify.com/dashboard"
+        echo "  -> Dans 'Redirect URIs', ajoute : http://127.0.0.1:8888/callback"
+        read -rp "  SPOTIFY_CLIENT_ID     : " CLIENT_ID
+        read -rp "  SPOTIFY_CLIENT_SECRET : " CLIENT_SECRET
+        python3 - <<PYEOF
+import pathlib
 p = pathlib.Path('.env')
 t = p.read_text()
 t = t.replace('your_client_id_here', '$CLIENT_ID')
 t = t.replace('your_client_secret_here', '$CLIENT_SECRET')
 p.write_text(t)
 PYEOF
-    echo "[OK] .env configure"
+        echo "[OK] .env configure"
+    else
+        echo "[OK] Credentials Spotify ignores (configurable plus tard dans la GUI ou dans .env)"
+    fi
 else
     echo "[OK] .env existant, rien a faire"
 fi
@@ -112,10 +118,14 @@ fi
 echo ""
 echo "=== Installation terminee ! ==="
 echo ""
-echo "Lancer l'outil :"
+echo "Lancer en mode GUI (Spotify / YouTube / Deezer) :"
 echo "  cd $DIR"
-echo "  bash run.sh download <URL_PLAYLIST>"
-echo "  bash run.sh download <URL_PLAYLIST> --flat    # structure plate playlist/titre.mp3"
+echo "  venv/bin/python gui.py"
 echo ""
-echo "Mettre a jour plus tard :"
+echo "Lancer en mode CLI (Spotify uniquement) :"
+echo "  cd $DIR"
+echo "  bash run.sh <URL_PLAYLIST_SPOTIFY>"
+echo "  bash run.sh <URL_PLAYLIST_SPOTIFY> --flat    # structure plate playlist/titre.mp3"
+echo ""
+echo "Mettre a jour :"
 echo "  bash run.sh update"

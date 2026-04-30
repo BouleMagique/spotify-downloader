@@ -7,3 +7,6 @@ venv/
 *.state.json
 .spotify_cache
 git-workflow.txt
+dist/
+build/
+*.spec
