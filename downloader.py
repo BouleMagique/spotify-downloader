@@ -23,7 +23,7 @@ def _build_ydl_opts(output_path: Path, browser: str | None = None) -> dict:
         "sleep_interval": 2,
         "max_sleep_interval": 5,
         "ignoreerrors": False,
-        "extractor_args": {"youtube": {"player_client": ["android", "web"]}},
+        "extractor_args": {"youtube": {"player_client": ["ios", "android", "web"]}},
     }
     if browser:
         opts["cookiesfrombrowser"] = (browser,)

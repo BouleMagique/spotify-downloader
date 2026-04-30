@@ -39,7 +39,7 @@ def find_youtube_url(track: dict) -> str | None:
         "no_warnings": True,
         "extract_flat": True,
         "skip_download": True,
-        "extractor_args": {"youtube": {"player_client": ["android", "web"]}},
+        "extractor_args": {"youtube": {"player_client": ["ios", "android", "web"]}},
     }
 
     candidates = []
