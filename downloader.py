@@ -4,9 +4,11 @@ import yt_dlp
 from utils import sanitize_filename
 from metadata import embed_tags
 
+_COOKIE_BROWSERS = ("edge", "chrome", "chromium", "firefox", "brave", "opera", "vivaldi")
 
-def _build_ydl_opts(output_path: Path) -> dict:
-    return {
+
+def _build_ydl_opts(output_path: Path, browser: str | None = None) -> dict:
+    opts = {
         "format": "bestaudio/best",
         "postprocessors": [{
             "key": "FFmpegExtractAudio",
@@ -23,6 +25,9 @@ def _build_ydl_opts(output_path: Path) -> dict:
         "ignoreerrors": False,
         "extractor_args": {"youtube": {"player_client": ["android", "web"]}},
     }
+    if browser:
+        opts["cookiesfrombrowser"] = (browser,)
+    return opts
 
 
 def build_output_path(base_dir: Path, track: dict, flat: bool = False, playlist_name: str = "") -> Path:
@@ -37,15 +42,31 @@ def build_output_path(base_dir: Path, track: dict, flat: bool = False, playlist_
     return base_dir / artist / album / filename
 
 
+def _run_download(opts: dict, url: str) -> None:
+    with yt_dlp.YoutubeDL(opts) as ydl:
+        ydl.download([url])
+
+
 def download_track(youtube_url: str, track: dict, output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # yt-dlp appends extension; strip .mp3 so it doesn't double-up
     template = str(output_path.with_suffix(""))
-    opts = _build_ydl_opts(Path(template))
 
-    with yt_dlp.YoutubeDL(opts) as ydl:
-        ydl.download([youtube_url])
+    try:
+        _run_download(_build_ydl_opts(Path(template)), youtube_url)
+    except Exception as e:
+        if "Sign in" not in str(e) and "bot" not in str(e).lower():
+            raise
+        # Retry with browser cookies to bypass bot detection
+        for browser in _COOKIE_BROWSERS:
+            try:
+                _run_download(_build_ydl_opts(Path(template), browser=browser), youtube_url)
+                break
+            except Exception:
+                continue
+        else:
+            raise
 
     if output_path.exists():
         embed_tags(output_path, track)
