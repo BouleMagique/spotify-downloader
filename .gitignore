@@ -1,12 +1,35 @@
+# Credentials & config locaux
 .env
+.spotify_cache
+
+# Téléchargements & état
 downloads/
+*.state.json
+
+# Python
 __pycache__/
 *.pyc
+*.pyo
 .venv/
 venv/
-*.state.json
-.spotify_cache
-git-workflow.txt
+*.egg-info/
+.pytest_cache/
+
+# PyInstaller
 dist/
 build/
 *.spec
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+*.code-workspace
+.vscode/
+.idea/
+
+# Divers
+git-workflow.txt
+*.log
