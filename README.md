@@ -1,69 +1,100 @@
 # Spotify Downloader
 
 Télécharge des playlists **Spotify**, **YouTube** et **Deezer** en MP3 320kbps.  
-Recherche automatiquement les morceaux sur YouTube Music, les télécharge et les tague (titre, artiste, album, cover, année, numéro de piste).
+Pour chaque morceau : recherche automatique sur YouTube Music, téléchargement via yt-dlp/ffmpeg, tags ID3 complets (titre, artiste, album, cover, année, numéro de piste, ISRC).
 
 ---
 
-## Installation (Windows)
+## Installation
 
-> Nécessite [Python 3.10+](https://www.python.org/downloads/) — coche **"Add Python to PATH"** lors de l'installation.
+### ⭐ Le plus simple — application packagée (un seul fichier)
 
-1. Télécharge le ZIP : bouton **Code → Download ZIP** sur [github.com/BouleMagique/spotify-downloader](https://github.com/BouleMagique/spotify-downloader)
-2. Extrais l'archive
-3. Double-clique sur **`install.bat`**
+Un livrable autonome par OS : **Python et toutes les dépendances sont déjà dedans** (interface graphique incluse). Rien à installer côté utilisateur — sauf `ffmpeg` (voir note plus bas).
 
-Le script installe les dépendances, ffmpeg, et ouvre l'interface automatiquement.
+| OS | Fichier | Lancer |
+|----|---------|--------|
+| **Linux** | `SpotifyDownloader-x86_64.AppImage` | `chmod +x SpotifyDownloader-x86_64.AppImage` puis double-clic ou `./SpotifyDownloader-x86_64.AppImage` |
+| **macOS** (Apple Silicon) | `SpotifyDownloader.app` | double-clic (voir *Gatekeeper* ci-dessous) |
+| **Windows** | `SpotifyDownloader.exe` | double-clic |
+
+Ces fichiers se trouvent sur la page **[Releases](https://github.com/BouleMagique/spotify-downloader/releases)**, ou tu peux les **générer toi-même** (section *Générer le package* ci-dessous).
+
+> **⚠️ ffmpeg requis.** Le convertisseur audio n'est pas embarqué. Installe-le une fois :
+> - Linux : `sudo pacman -S ffmpeg` / `sudo apt install ffmpeg`
+> - macOS : `brew install ffmpeg`
+> - Windows : `winget install Gyan.FFmpeg`
+
+> **🍎 macOS — Gatekeeper.** L'app n'est pas notarisée (pas de compte développeur Apple). Au 1er lancement : **clic-droit → Ouvrir**, ou en terminal `xattr -dr com.apple.quarantine SpotifyDownloader.app`.
+
+> **🪟 Windows — SmartScreen.** L'exe n'est pas signé : *« More info » → « Run anyway »*.
+
+---
+
+### 🔨 Générer le package (build)
+
+Chaque script crée le livrable de son OS dans `dist/`. **PyInstaller ne cross-compile pas** : il faut builder sur l'OS cible.
+
+| OS | Commande | Sortie | Prérequis build |
+|----|----------|--------|-----------------|
+| **Linux** | `bash build-linux.sh` | `dist/SpotifyDownloader-x86_64.AppImage` | Python 3.10+, `tk` (`sudo pacman -S tk` / `apt install python3-tk`) |
+| **macOS** | `bash build-macos.sh` | `dist/SpotifyDownloader.app` (+ `.zip`) | Python 3 avec Tk (Command Line Tools suffisent) |
+| **Windows** | `build.bat` | `dist\SpotifyDownloader.exe` | Python 3.10+ |
+
+Les scripts créent un venv isolé, installent les dépendances + PyInstaller, et empaquettent tout (les secrets `.env` / `.spotify_cache` sont **exclus** du bundle). `appimagetool` est téléchargé automatiquement au 1er build Linux.
+
+---
+
+### 🐍 Depuis les sources (mode développeur)
+
+Sans packaging, en lançant directement le Python :
+
+**Arch / CachyOS**
+```bash
+sudo pacman -S python python-pip git ffmpeg tk
+git clone https://github.com/BouleMagique/spotify-downloader.git
+cd spotify-downloader
+python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+```
+
+**Ubuntu / Debian**
+```bash
+sudo apt install python3 python3-venv python3-pip git ffmpeg python3-tk
+git clone https://github.com/BouleMagique/spotify-downloader.git
+cd spotify-downloader
+python3 -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+```
+
+**macOS**
+```bash
+brew install python git ffmpeg python-tk
+git clone https://github.com/BouleMagique/spotify-downloader.git
+cd spotify-downloader
+python3 -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+```
+
+**Script d'install auto (Arch, Debian, Fedora, macOS)** — détecte le gestionnaire de paquets, installe ffmpeg + tkinter, configure le `.env` :
+```bash
+curl -sSL https://raw.githubusercontent.com/BouleMagique/spotify-downloader/master/install.sh | bash
+```
 
 ---
 
 ## Utilisation — GUI
 
-Lance **`launch-gui.bat`** pour ouvrir l'interface.
+- **Application packagée** : lance simplement le fichier (AppImage / .app / .exe).
+- **Depuis les sources** : `venv/bin/python gui.py` (Linux/macOS) ou `launch-gui.bat` (Windows).
 
-Supporte les playlists **Spotify**, **YouTube** et **Deezer**.  
-Pour Spotify : renseigne ton Client ID et Client Secret dans le panneau "Configuration Spotify" (credentials à créer sur [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard)).  
-Pour YouTube et Deezer : aucun credential requis.
+L'interface supporte **Spotify**, **YouTube** et **Deezer** :
 
----
-
-## Mise à jour
-
-Re-télécharge le ZIP et relance `install.bat`.
+- **Spotify** : renseigne Client ID + Client Secret dans le panneau "Configuration Spotify" (à créer sur [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard))
+- **YouTube** et **Deezer** : aucun credential requis — colle l'URL et lance
 
 ---
 
-## Installation avancée (CLI / développeurs)
-
-### Via une commande (nécessite Git)
-
-**Windows :**
-```powershell
-powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/BouleMagique/spotify-downloader/master/install.ps1 | iex"
-```
-
-**Linux / macOS :**
-```bash
-curl -sSL https://raw.githubusercontent.com/BouleMagique/spotify-downloader/master/install.sh | bash
-```
-
-### Manuelle
-
-```bash
-git clone https://github.com/BouleMagique/spotify-downloader.git
-cd spotify-downloader
-python -m venv venv
-venv\Scripts\activate      # Windows
-source venv/bin/activate   # Linux / macOS
-pip install -r requirements.txt
-```
-
-**Installer ffmpeg :**  
-Windows : `winget install --id Gyan.FFmpeg`  
-Ubuntu/Debian : `sudo apt install ffmpeg`  
-macOS : `brew install ffmpeg`
-
-### Lancer le CLI (Spotify uniquement)
+## Utilisation — CLI (Spotify uniquement)
 
 ```bash
 # Windows
@@ -74,6 +105,9 @@ bash run.sh <URL_PLAYLIST_SPOTIFY>
 
 # Python direct (venv activé)
 python main.py <URL>
+python main.py <URL> --output ~/Music --workers 4
+python main.py <URL> --dry-run   # liste les morceaux sans télécharger
+python main.py <URL> --flat      # structure plate : playlist/titre.mp3
 ```
 
 **Options :**
@@ -86,8 +120,7 @@ python main.py <URL>
 | `--dry-run` | off | Liste les morceaux sans télécharger |
 | `--skip-existing/--no-skip` | skip | Sauter les fichiers déjà présents |
 
-### Mise à jour CLI
-
+**Mise à jour :**
 ```bash
 run.bat update      # Windows
 bash run.sh update  # Linux / macOS
@@ -130,7 +163,7 @@ downloads/
 ## Dépendances
 
 | Package | Rôle |
-|---|---|
+|---------|------|
 | `spotipy` | API Spotify (OAuth2) |
 | `yt-dlp` | Recherche et téléchargement YouTube |
 | `mutagen` | Tags ID3 / métadonnées MP3 |
@@ -138,4 +171,6 @@ downloads/
 | `rich` | Affichage terminal |
 | `python-dotenv` | Chargement du `.env` |
 | `requests` | Téléchargement des covers + API Deezer |
-| `truststore` | Certificats SSL système (proxy corporate) |
+| `truststore` | Certificats SSL système (optionnel, Python 3.10+) |
+
+**Dépendances système :** `ffmpeg` (conversion audio), `tk` / `python3-tk` (GUI, uniquement pour builder ou lancer depuis les sources)

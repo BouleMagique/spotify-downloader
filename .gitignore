@@ -35,3 +35,6 @@ git-workflow.txt
 *.log
 CLAUDE.md
 spotify_downloader.code-workspace
+
+# Revue de code interne (ne pas publier)
+REVUE_CODE.md

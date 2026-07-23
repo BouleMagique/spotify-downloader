@@ -80,6 +80,8 @@ else
     echo "[INFO] Installation de ffmpeg..."
     if command -v apt-get &>/dev/null; then
         sudo apt-get install -y ffmpeg -qq
+    elif command -v pacman &>/dev/null; then
+        sudo pacman -S --noconfirm ffmpeg
     elif command -v brew &>/dev/null; then
         brew install ffmpeg
     elif command -v dnf &>/dev/null; then
@@ -89,6 +91,27 @@ else
         echo "       Installe-le manuellement : https://ffmpeg.org/download.html"
     fi
     command -v ffmpeg &>/dev/null && echo "[OK] ffmpeg installe"
+fi
+
+# --- tkinter (requis pour la GUI) ---
+if python3 -c "import tkinter" &>/dev/null 2>&1; then
+    echo "[OK] tkinter present"
+else
+    echo "[INFO] Installation de tkinter..."
+    if command -v apt-get &>/dev/null; then
+        sudo apt-get install -y python3-tk -qq
+    elif command -v pacman &>/dev/null; then
+        sudo pacman -S --noconfirm tk
+    elif command -v brew &>/dev/null; then
+        brew install python-tk
+    elif command -v dnf &>/dev/null; then
+        sudo dnf install -y python3-tkinter
+    else
+        echo "[WARN] tkinter introuvable — installe-le via ton gestionnaire de paquets."
+        echo "       Arch : sudo pacman -S tk"
+        echo "       Debian/Ubuntu : sudo apt install python3-tk"
+    fi
+    python3 -c "import tkinter" &>/dev/null 2>&1 && echo "[OK] tkinter installe"
 fi
 
 # --- .env (Spotify, optionnel) ---
