@@ -1,0 +1,44 @@
+name: Build Windows exe
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build SpotifyDownloader.exe
+        run: |
+          pyinstaller --onefile --windowed --name SpotifyDownloader `
+            --collect-all yt_dlp --collect-all spotipy `
+            --hidden-import mutagen --hidden-import mutagen.id3 `
+            --hidden-import truststore --hidden-import dotenv --hidden-import requests `
+            --hidden-import tkinter --hidden-import tkinter.ttk --hidden-import tkinter.scrolledtext `
+            gui.py
+
+      - name: Upload to release v0.1.0
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload v0.1.0 dist/SpotifyDownloader.exe --clobber
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SpotifyDownloader-windows
+          path: dist/SpotifyDownloader.exe
