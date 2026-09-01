@@ -7,13 +7,22 @@ import sys
 import threading
 from pathlib import Path
 
-# Portable base dir — works both as .py script and PyInstaller .exe
+# Portable base dir (ressources bundlées en LECTURE SEULE : .env.example)
+# — works both as .py script and PyInstaller .exe
 if getattr(sys, "frozen", False):
     BASE_DIR = Path(sys.executable).parent
 else:
     BASE_DIR = Path(__file__).parent
 
-os.chdir(BASE_DIR)  # .env et .spotify_cache résolus en relatif depuis ici
+# État runtime inscriptible (.env, .spotify_cache). Dans un AppImage, BASE_DIR
+# est un montage squashfs en lecture seule → on écrit dans un dossier user.
+CONFIG_DIR = Path(
+    os.environ.get("SPOTIFY_DL_HOME")
+    or Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "spotify-downloader"
+)
+CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+
+os.chdir(CONFIG_DIR)  # .env et .spotify_cache résolus en relatif depuis ici
 
 try:
     import truststore
@@ -25,7 +34,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, scrolledtext
 from dotenv import load_dotenv, set_key
 
-load_dotenv(BASE_DIR / ".env", override=True)
+load_dotenv(CONFIG_DIR / ".env", override=True)
 
 from spotify_client import get_playlist_info as sp_info
 from spotify_client import get_playlist_tracks as sp_tracks
@@ -35,7 +44,7 @@ from downloader import download_track, build_output_path
 from utils import load_state, save_state
 import yt_dlp
 
-ENV_PATH = BASE_DIR / ".env"
+ENV_PATH = CONFIG_DIR / ".env"
 SOURCES = ["Spotify", "YouTube", "Deezer"]
 URL_LABELS = {
     "Spotify": "Playlist URL Spotify :",
