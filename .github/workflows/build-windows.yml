@@ -2,6 +2,10 @@ name: Build Windows exe
 
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to upload the exe to'
+        required: true
   push:
     tags: ['v*']
 
@@ -33,10 +37,11 @@ jobs:
             --hidden-import tkinter --hidden-import tkinter.ttk --hidden-import tkinter.scrolledtext `
             gui.py
 
-      - name: Upload to release v0.1.0
+      - name: Upload to release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload v0.1.0 dist/SpotifyDownloader.exe --clobber
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: gh release upload "$env:TAG" dist/SpotifyDownloader.exe --clobber
 
       - uses: actions/upload-artifact@v4
         with:
