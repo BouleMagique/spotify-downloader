@@ -99,6 +99,14 @@ src/                       interface (Svelte + Vite)
 - Interface : **SvelteKit (Svelte 5) + TypeScript**, polices embarquées (Inter, Space Grotesk).
 - Le code Tauri vit dans **`app/`** (l'app Python reste à la racine jusqu'à la bascule).
 - Nom provisoire : **Playlist DL**, identifiant `com.boulemagique.playlistdl`.
+- **Outils téléchargés au premier lancement** (rien dans le bundle), dans
+  `<données de l'app>/bin` : yt-dlp (mis à jour par `-U` à chaque lancement),
+  ffmpeg + ffprobe (sauf s'ils sont dans le PATH), **deno** (moteur JS exigé par
+  yt-dlp pour YouTube depuis fin 2026 ; sinon avertissement et formats
+  manquants). Sources : releases GitHub yt-dlp et deno ; ffmpeg =
+  yt-dlp/FFmpeg-Builds (Linux), gyan.dev essentials (Windows),
+  ffmpeg.martin-riedl.de (macOS). Environ 500 Mo sur disque au total si rien
+  n'est installé (ffmpeg statique ≈ 180 Mo par binaire).
 - Maquettes de référence : https://claude.ai/artifact/72sAwhQ7eyE5Vy2zzEAfcg
 - CI : `.github/workflows/build-tauri.yml`, tags **`app-v*`** (les tags `v*`
   restent ceux de l'app Python), release en brouillon.
@@ -117,6 +125,5 @@ très lents. Worktree local utilisé : `~/dev/playlist-dl`.
 
 ## Questions ouvertes
 
-- ffmpeg : bundlé ou téléchargé au premier lancement ?
 - Garder la CLI (`main.py`) ? Une CLI Rust serait facile à ajouter sur le même
   cœur si besoin.

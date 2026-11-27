@@ -1,7 +1,7 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
 
-  type AppInfo = { version: string; configDir: string };
+  type AppInfo = { version: string; configDir: string; outputDir: string };
   let info = $state<AppInfo | null>(null);
   invoke<AppInfo>("app_info").then((i) => (info = i));
 </script>
@@ -12,6 +12,7 @@
     <h2>À propos</h2>
     <dl>
       <dt>Version</dt><dd>{info?.version ?? "…"}</dd>
+      <dt>Dossier de sortie</dt><dd><code>{info?.outputDir ?? "…"}</code></dd>
       <dt>Dossier de configuration</dt><dd><code>{info?.configDir ?? "…"}</code></dd>
     </dl>
   </section>
