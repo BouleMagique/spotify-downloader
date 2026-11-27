@@ -1,0 +1,28 @@
+@import "@fontsource-variable/inter";
+@import "@fontsource/space-grotesk/600.css";
+@import "@fontsource/space-grotesk/700.css";
+
+:root {
+  --bg: #0f1014;
+  --panel: #15171c;
+  --field: #181b21;
+  --line: #262a31;
+  --line-strong: #353a43;
+  --hover: #22262e;
+  --text: #ecedef;
+  --text-2: #c4c8cf;
+  --muted: #9ba1ac;
+  --accent: #ff8a4c;
+  --on-accent: #1a0e06;
+  --ok: #8fd8ec;
+  --err: #ff9f9f;
+  --font: "Inter Variable", system-ui, sans-serif;
+  --display: "Space Grotesk", var(--font);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 14px/1.4 var(--font); }
+a { color: var(--accent); }
+button, input, select { font: inherit; color: inherit; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

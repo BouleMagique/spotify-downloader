@@ -96,10 +96,27 @@ src/                       interface (Svelte + Vite)
 ## Décisions prises
 
 - Framework : **Tauri 2** (2026-11-27).
+- Interface : **SvelteKit (Svelte 5) + TypeScript**, polices embarquées (Inter, Space Grotesk).
+- Le code Tauri vit dans **`app/`** (l'app Python reste à la racine jusqu'à la bascule).
+- Nom provisoire : **Playlist DL**, identifiant `com.boulemagique.playlistdl`.
+- Maquettes de référence : https://claude.ai/artifact/72sAwhQ7eyE5Vy2zzEAfcg
+- CI : `.github/workflows/build-tauri.yml`, tags **`app-v*`** (les tags `v*`
+  restent ceux de l'app Python), release en brouillon.
+
+## Développer
+
+```bash
+cd app
+npm install
+npm run tauri dev                          # fenêtre avec rechargement à chaud
+npm run tauri build -- --bundles appimage  # AppImage locale
+```
+
+Travailler hors du partage Samba (`/mnt/dev`) : cargo et node_modules y sont
+très lents. Worktree local utilisé : `~/dev/playlist-dl`.
 
 ## Questions ouvertes
 
-- Svelte ou HTML/JS simple pour l'interface ? (proposé : Svelte)
 - ffmpeg : bundlé ou téléchargé au premier lancement ?
 - Garder la CLI (`main.py`) ? Une CLI Rust serait facile à ajouter sur le même
   cœur si besoin.
